@@ -69,8 +69,8 @@ if [ "${GIT_ENABLED}" == "true" ] || [ "${GIT_ENABLED}" == "1" ]; then
 		# If git origin matches the repo specified by user then pull
 		if [ "${GIT_ORIGIN}" == "${GIT_REPOURL}" ]; then
 			# Override local changes
-			echo "Overriding local changes..."
-			git clean -fd
+			# echo "Overriding local changes..."
+			# git clean -fd
 
 			# Fetch latest changes (shallow if original clone was shallow)
 			echo "Fetching latest changes..."
