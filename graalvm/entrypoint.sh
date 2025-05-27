@@ -33,56 +33,73 @@ export INTERNAL_IP
 # Switch to the container's working directory
 cd /home/container || exit 1
 
-# Update repo from git
-if [ "${GIT_ENABLED}" == "false" ] || [ "${GIT_ENABLED}" == "0" ]; then
-    echo -e "Git enabled."
+# Auto update server from git.
+if [ "${GIT_ENABLED}" == "true" ] || [ "${GIT_ENABLED}" == "1" ]; then
 
-    ## add git ending if it's not on the address
-    if [[ ${GIT_ADDRESS} != *.git ]]; then
-        GIT_ADDRESS=${GIT_ADDRESS}.git
-    fi
+	# Pre git stuff
+	echo "Wait, preparing to pull or clone from git."
 
-    if [ -z "${GIT_USERNAME}" ] && [ -z "${GIT_ACCESS_TOKEN}" ]; then
-        echo -e "Git Username or Git Token was not specified. Proceeding anonymously."
-    else
-        GIT_ADDRESS="https://${GIT_USERNAME}:${GIT_ACCESS_TOKEN}@$(echo -e ${GIT_ADDRESS} | cut -d/ -f3-)"
-    fi
+	mkdir -p /home/container
+	cd /home/container
 
+	# Git stuff
+	if [[ ${GIT_REPOURL} != *.git ]]; then # Add .git at end of URL
+		GIT_REPOURL=${GIT_REPOURL}.git
+	fi
 
-    if [ "$(ls -A /home/container)" ]; then
-        echo -e "/home/container directory is not empty."
+	if [ -z "${GIT_USERNAME}" ] && [ -z "${GIT_TOKEN}" ]; then # Check for git username & token
+		echo -e "git Username or git Token was not specified."
+	else
+		GIT_REPOURL="https://${GIT_USERNAME}:${GIT_TOKEN}@$(echo -e ${GIT_REPOURL} | cut -d/ -f3-)"
+	fi
 
-        # Get git origin from /home/container/.git/config
-        if [ -d .git ]; then
-            echo -e ".git directory exists"
-            if [ -f .git/config ]; then
-                echo -e "loading info from git config"
-                ORIGIN=$(git config --get remote.origin.url)
-            else
-                echo -e "files found with no git config"
-                echo -e "closing out without touching things to not break anything"
-                exit 10
-            fi
-        fi
+	if [ "$(ls -A /home/container)" ]; then # Files exist in server folder, pull
+		echo -e "Files exist in /home/container/. Attempting to pull from git repository."
 
-        # If git origin matches the repo specified by user then pull
-        if [ "${ORIGIN}" == "${GIT_ADDRESS}" ]; then
-            echo "pulling latest from github"
-            git pull && echo "Finished pulling /home/container from Git." || echo "Failed pulling /home/container from Git."
-        fi
-    else
-        # No files exist in resources folder, clone
-        echo -e "/home/container is empty.\ncloning files into repo"
-        if [ -z ${GIT_BRANCH} ]; then
-            echo -e "Cloning default branch into /home/container."
-            git clone ${GIT_ADDRESS} .
-        else
-            echo -e "Cloning ${GIT_BRANCH} branch into /home/container."
-            git clone --single-branch --branch ${GIT_BRANCH} ${GIT_ADDRESS} . && echo "Finished cloning into /home/container from Git." || echo "Failed cloning into /home/container from Git."
-        fi
-    fi
-else
-    echo -e "Git disabled."
+		# Get git origin from /home/container/.git/config
+		if [ -d .git ]; then
+			if [ -f .git/config ]; then
+				GIT_ORIGIN=$(git config --get remote.origin.url)
+			fi
+		fi
+
+		# Check if we have a shallow clone and need to maintain it
+		is_shallow=$(git rev-parse --is-shallow-repository 2>/dev/null || echo "false")
+
+		# If git origin matches the repo specified by user then pull
+		if [ "${GIT_ORIGIN}" == "${GIT_REPOURL}" ]; then
+			# Override local changes
+			echo "Overriding local changes..."
+			git clean -fd
+
+			# Fetch latest changes (shallow if original clone was shallow)
+			echo "Fetching latest changes..."
+			if [ "$is_shallow" = "true" ]; then
+				git fetch --depth 1 origin "${GIT_BRANCH}" && echo "Finished fetching /home/container/ from git." || echo "Failed fetching /home/container/ from git."
+			else
+				git fetch origin "${GIT_BRANCH}"
+			fi
+
+			# Force reset to match remote branch (this will override any local edits)
+			echo "Updating to match remote branch..."
+			git reset --hard "origin/${GIT_BRANCH}" && echo "Finished updating /home/container/ from git." || echo "Failed updating /home/container/ from git."
+		else
+			echo -e "git repository in /home/container/ does not match user provided configuration. Failed pulling /home/container/ from git."
+		fi
+	else # No files exist in server folder, clone
+		echo -e "Server directory is empty. Attempting to clone git repository."
+
+		if [ -z ${GIT_BRANCH} ]; then
+			echo -e "Cloning default branch into /home/container/."
+			git clone --single-branch --depth 1 ${GIT_REPOURL} . && echo "Finished cloning into /home/container/ from git." || echo "Failed cloning into /home/container/ from git."
+		else
+			echo -e "Cloning ${GIT_BRANCH} branch into /home/container/."
+			git clone --single-branch --branch ${GIT_BRANCH} --depth 1 ${GIT_REPOURL} . && echo "Finished cloning into /home/container/ from git." || echo "Failed cloning into /home/container/ from git."
+		fi
+	fi
+
+	# Post git stuff
+	cd /home/container
 fi
 
 # Print Java version
