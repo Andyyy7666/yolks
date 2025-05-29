@@ -160,89 +160,93 @@ perform_git_clone() {
 }
 
 # Auto update server from git.
-if [ "${GIT_ENABLED}" == "true" ] || [ "${GIT_ENABLED}" == "1" ]; then
-	echo "Git auto-update is enabled"
-	echo ""
-
-	# Validate variables
-	if [ -z "${GIT_REPOURL}" ]; then
-		echo "❌ Error: GIT_REPOURL is not specified"
-		exit 1
-	fi
-
-	if [ -z "${GIT_USERNAME}" ] || [ -z "${GIT_TOKEN}" ]; then
-		echo "❌ Error: GIT_USERNAME or GIT_TOKEN is not specified"
-		echo "   Both are required for private repository access"
-		exit 1
-	fi
-
-	local normalized_repo_url=$(normalize_repo_url "$GIT_REPOURL")
-	local auth_repo_url=$(construct_auth_url "$normalized_repo_url" "$GIT_USERNAME" "$GIT_TOKEN")
-	local branch="${GIT_BRANCH:-$DEFAULT_BRANCH}"
-	local repo_info=$(get_repo_info "$GIT_REPOURL")
-
-	echo "Git Configuration:"
-	echo "   Repository: $repo_info"
-	echo "   Branch: $branch"
-	echo "   Target directory: $CONTAINER_DIR"
-
-	# Check if directory has content
-	if [ "$(ls -A .)" ]; then
+perform_git_logic() {
+	if [ "${GIT_ENABLED}" == "true" ] || [ "${GIT_ENABLED}" == "1" ]; then
+		echo "Git auto-update is enabled"
 		echo ""
-		echo "Container directory is not empty, checking for existing repository..."
 
-		if is_git_repo; then
-			echo "Found existing git repository"
+		# Validate variables
+		if [ -z "${GIT_REPOURL}" ]; then
+			echo "❌ Error: GIT_REPOURL is not specified"
+			exit 1
+		fi
 
-			# Get current remote URL
-			local 'current_remote'=$(git config --get remote.origin.url 2>/dev/null || echo "")
+		if [ -z "${GIT_USERNAME}" ] || [ -z "${GIT_TOKEN}" ]; then
+			echo "❌ Error: GIT_USERNAME or GIT_TOKEN is not specified"
+			echo "   Both are required for private repository access"
+			exit 1
+		fi
 
-			if [ -n "$current_remote" ]; then
-				echo "Current remote: $(normalize_repo_url "$current_remote" | sed 's|https://github.com/||' | sed 's|\.git$||')"
+		local normalized_repo_url=$(normalize_repo_url "$GIT_REPOURL")
+		local auth_repo_url=$(construct_auth_url "$normalized_repo_url" "$GIT_USERNAME" "$GIT_TOKEN")
+		local branch="${GIT_BRANCH:-$DEFAULT_BRANCH}"
+		local repo_info=$(get_repo_info "$GIT_REPOURL")
 
-				# Check if URLs match (ignoring credentials)
-				if urls_match "$current_remote" "$normalized_repo_url"; then
-					echo "Repository URLs match"
+		echo "Git Configuration:"
+		echo "   Repository: $repo_info"
+		echo "   Branch: $branch"
+		echo "   Target directory: $CONTAINER_DIR"
 
-					# Update remote URL with new credentials (handles PAT changes)
-					update_remote_url "$auth_repo_url"
+		# Check if directory has content
+		if [ "$(ls -A .)" ]; then
+			echo ""
+			echo "Container directory is not empty, checking for existing repository..."
 
-					# Perform update
-					perform_git_update "$branch" "$repo_info"
+			if is_git_repo; then
+				echo "Found existing git repository"
+
+				# Get current remote URL
+				local current_remote=$(git config --get remote.origin.url 2>/dev/null || echo "")
+
+				if [ -n "$current_remote" ]; then
+					echo "Current remote: $(normalize_repo_url "$current_remote" | sed 's|https://github.com/||' | sed 's|\.git$||')"
+
+					# Check if URLs match (ignoring credentials)
+					if urls_match "$current_remote" "$normalized_repo_url"; then
+						echo "Repository URLs match"
+
+						# Update remote URL with new credentials (handles PAT changes)
+						update_remote_url "$auth_repo_url"
+
+						# Perform update
+						perform_git_update "$branch" "$repo_info"
+					else
+						echo "❌ Repository mismatch!"
+						echo "   Expected: $repo_info"
+						echo "   Found: $(get_repo_info "$current_remote")"
+						echo ""
+						exit 1
+					fi
 				else
-					echo "❌ Repository mismatch!"
-					echo "   Expected: $repo_info"
-					echo "   Found: $(get_repo_info "$current_remote")"
-					echo ""
+					echo "Could not determine current remote URL"
 					exit 1
 				fi
 			else
-				echo "Could not determine current remote URL"
-				exit 1
+				echo "Directory contains files but is not a git repository"
+				perform_git_clone "$auth_repo_url" "$branch" "$repo_info"
 			fi
 		else
-			echo "Directory contains files but is not a git repository"
+			echo ""
+			echo "Container directory is empty, performing initial clone..."
 			perform_git_clone "$auth_repo_url" "$branch" "$repo_info"
 		fi
-	else
+
 		echo ""
-		echo "Container directory is empty, performing initial clone..."
-		perform_git_clone "$auth_repo_url" "$branch" "$repo_info"
+		echo "✅ Git auto-update completed successfully!"
+		echo "Working directory: $(pwd)"
+
+		# Final verification
+		if is_git_repo; then
+			local final_branch=$(git branch --show-current 2>/dev/null || echo "unknown")
+			echo "Current branch: $final_branch"
+		fi
+
+		# Post git stuff
+		cd /home/container
 	fi
+}
 
-	echo ""
-	echo "✅ Git auto-update completed successfully!"
-	echo "Working directory: $(pwd)"
-
-	# Final verification
-	if is_git_repo; then
-		local final_branch=$(git branch --show-current 2>/dev/null || echo "unknown")
-		echo "Current branch: $final_branch"
-	fi
-
-	# Post git stuff
-	cd /home/container
-fi
+perform_git_logic
 
 # Print Java version
 printf "\033[1m\033[33mcontainer@pterodactyl~ \033[0mjava -version\n"
