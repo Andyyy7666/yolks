@@ -33,69 +33,211 @@ export INTERNAL_IP
 # Switch to the container's working directory
 cd /home/container || exit 1
 
+CONTAINER_DIR="/home/container"
+DEFAULT_BRANCH="main"
+
+# Normalize repository URL
+normalize_repo_url() {
+	local url="$1"
+
+	# Remove any existing credentials (user:token@)
+	url=$(echo "$url" | sed 's|https://[^@]*@|https://|')
+
+	# Add .git suffix if not present
+	if [[ "$url" != *.git ]]; then
+		url="${url}.git"
+	fi
+
+	echo "$url"
+}
+
+# Construct authenticated URL
+construct_auth_url() {
+	local repo_url="$1"
+	local username="$2"
+	local token="$3"
+
+	# Remove https:// prefix
+	repo_url="${repo_url#https://}"
+
+	# Construct authenticated URL
+	echo "https://${username}:${token}@${repo_url}"
+}
+
+# Extract repository info for logging
+get_repo_info() {
+	local url="$1"
+	local normalized_url=$(normalize_repo_url "$url")
+
+	# Extract owner/repo from URL
+	local repo_path=$(echo "$normalized_url" | sed 's|https://github.com/||' | sed 's|\.git$||')
+	echo "$repo_path"
+}
+
+# Check if current directory is a git repository
+is_git_repo() {
+	[ -d ".git" ] && [ -f ".git/config" ]
+}
+
+# Check if repository URLs match (ignores credentials)
+urls_match() {
+	local url1="$1"
+	local url2="$2"
+
+	local normalized1=$(normalize_repo_url "$url1")
+	local normalized2=$(normalize_repo_url "$url2")
+
+	[ "$normalized1" = "$normalized2" ]
+}
+
+# update git remote URL with new credentials (needed for when a user switches PAT's)
+update_remote_url() {
+	local new_url="$1"
+	echo "Updating remote URL with new credentials..."
+	git remote set-url origin "$new_url"
+	echo "Remote URL updated successfully"
+}
+
+# Apply updates for custom repo
+perform_git_update() {
+	local branch="$1"
+	local repo_info="$2"
+
+	echo ""
+	echo "Fetching latest changes from remote..."
+
+	# Check if we have a shallow clone
+	local is_shallow=$(git rev-parse --is-shallow-repository 2>/dev/null || echo "false")
+
+	# Fetch based on whether it's shallow or not
+	if [ "$is_shallow" = "true" ]; then
+		echo "Detected shallow repository, fetching with depth 1..."
+		git fetch --depth 1 origin "$branch"
+	else
+		echo "Fetching full history..."
+		git fetch origin "$branch"
+	fi
+
+	echo "Updating local files to match remote branch..."
+	git reset --hard "origin/$branch"
+
+	# Get latest commit info for logging
+	local latest_commit=$(git log -1 --oneline 2>/dev/null || echo "unknown")
+
+	echo ""
+	echo "✅ Successfully updated repository!"
+	echo "Repository: $repo_info"
+	echo "Branch: $branch"
+	echo "Latest commit: $latest_commit"
+}
+
+# Clone custom repo
+perform_git_clone() {
+	local repo_url="$1"
+	local branch="$2"
+	local repo_info="$3"
+
+	echo ""
+	echo "Cloning repository into container directory..."
+
+	if [ -z "$branch" ]; then
+		echo "Cloning default branch..."
+		git clone --single-branch --depth 1 "$repo_url" .
+	else
+		echo "Cloning branch: $branch"
+		git clone --single-branch --branch "$branch" --depth 1 "$repo_url" .
+	fi
+
+	# Get current branch and latest commit for logging
+	local current_branch=$(git branch --show-current 2>/dev/null || echo "unknown")
+	local latest_commit=$(git log -1 --oneline 2>/dev/null || echo "unknown")
+
+	echo ""
+	echo "✅ Successfully cloned repository!"
+	echo "Repository: $repo_info"
+	echo "Branch: $current_branch"
+	echo "Latest commit: $latest_commit"
+}
+
 # Auto update server from git.
 if [ "${GIT_ENABLED}" == "true" ] || [ "${GIT_ENABLED}" == "1" ]; then
+	echo "Git auto-update is enabled"
+	echo ""
 
-	# Pre git stuff
-	echo "Wait, preparing to pull or clone from git."
-
-	mkdir -p /home/container
-	cd /home/container
-
-	# Git stuff
-	if [[ ${GIT_REPOURL} != *.git ]]; then # Add .git at end of URL
-		GIT_REPOURL=${GIT_REPOURL}.git
+	# Validate variables
+	if [ -z "${GIT_REPOURL}" ]; then
+		echo "❌ Error: GIT_REPOURL is not specified"
+		exit 1
 	fi
 
-	if [ -z "${GIT_USERNAME}" ] && [ -z "${GIT_TOKEN}" ]; then # Check for git username & token
-		echo -e "git Username or git Token was not specified."
-	else
-		GIT_REPOURL="https://${GIT_USERNAME}:${GIT_TOKEN}@$(echo -e ${GIT_REPOURL} | cut -d/ -f3-)"
+	if [ -z "${GIT_USERNAME}" ] || [ -z "${GIT_TOKEN}" ]; then
+		echo "❌ Error: GIT_USERNAME or GIT_TOKEN is not specified"
+		echo "   Both are required for private repository access"
+		exit 1
 	fi
 
-	if [ "$(ls -A /home/container)" ]; then # Files exist in server folder, pull
-		echo -e "Files exist in /home/container/. Attempting to pull from git repository."
+	local normalized_repo_url=$(normalize_repo_url "$GIT_REPOURL")
+	local auth_repo_url=$(construct_auth_url "$normalized_repo_url" "$GIT_USERNAME" "$GIT_TOKEN")
+	local branch="${GIT_BRANCH:-$DEFAULT_BRANCH}"
+	local repo_info=$(get_repo_info "$GIT_REPOURL")
 
-		# Get git origin from /home/container/.git/config
-		if [ -d .git ]; then
-			if [ -f .git/config ]; then
-				GIT_ORIGIN=$(git config --get remote.origin.url)
-			fi
-		fi
+	echo "Git Configuration:"
+	echo "   Repository: $repo_info"
+	echo "   Branch: $branch"
+	echo "   Target directory: $CONTAINER_DIR"
 
-		# Check if we have a shallow clone and need to maintain it
-		is_shallow=$(git rev-parse --is-shallow-repository 2>/dev/null || echo "false")
+	# Check if directory has content
+	if [ "$(ls -A .)" ]; then
+		echo ""
+		echo "Container directory is not empty, checking for existing repository..."
 
-		# If git origin matches the repo specified by user then pull
-		if [ "${GIT_ORIGIN}" == "${GIT_REPOURL}" ]; then
-			# Override local changes
-			# echo "Overriding local changes..."
-			# git clean -fd
+		if is_git_repo; then
+			echo "Found existing git repository"
 
-			# Fetch latest changes (shallow if original clone was shallow)
-			echo "Fetching latest changes..."
-			if [ "$is_shallow" = "true" ]; then
-				git fetch --depth 1 origin "${GIT_BRANCH}" && echo "Finished fetching /home/container/ from git." || echo "Failed fetching /home/container/ from git."
+			# Get current remote URL
+			local 'current_remote'=$(git config --get remote.origin.url 2>/dev/null || echo "")
+
+			if [ -n "$current_remote" ]; then
+				echo "Current remote: $(normalize_repo_url "$current_remote" | sed 's|https://github.com/||' | sed 's|\.git$||')"
+
+				# Check if URLs match (ignoring credentials)
+				if urls_match "$current_remote" "$normalized_repo_url"; then
+					echo "Repository URLs match"
+
+					# Update remote URL with new credentials (handles PAT changes)
+					update_remote_url "$auth_repo_url"
+
+					# Perform update
+					perform_git_update "$branch" "$repo_info"
+				else
+					echo "❌ Repository mismatch!"
+					echo "   Expected: $repo_info"
+					echo "   Found: $(get_repo_info "$current_remote")"
+					echo ""
+					exit 1
+				fi
 			else
-				git fetch origin "${GIT_BRANCH}"
+				echo "Could not determine current remote URL"
+				exit 1
 			fi
-
-			# Force reset to match remote branch (this will override any local edits)
-			echo "Updating to match remote branch..."
-			git reset --hard "origin/${GIT_BRANCH}" && echo "Finished updating /home/container/ from git." || echo "Failed updating /home/container/ from git."
 		else
-			echo -e "git repository in /home/container/ does not match user provided configuration. Failed pulling /home/container/ from git."
+			echo "Directory contains files but is not a git repository"
+			perform_git_clone "$auth_repo_url" "$branch" "$repo_info"
 		fi
-	else # No files exist in server folder, clone
-		echo -e "Server directory is empty. Attempting to clone git repository."
+	else
+		echo ""
+		echo "Container directory is empty, performing initial clone..."
+		perform_git_clone "$auth_repo_url" "$branch" "$repo_info"
+	fi
 
-		if [ -z ${GIT_BRANCH} ]; then
-			echo -e "Cloning default branch into /home/container/."
-			git clone --single-branch --depth 1 ${GIT_REPOURL} . && echo "Finished cloning into /home/container/ from git." || echo "Failed cloning into /home/container/ from git."
-		else
-			echo -e "Cloning ${GIT_BRANCH} branch into /home/container/."
-			git clone --single-branch --branch ${GIT_BRANCH} --depth 1 ${GIT_REPOURL} . && echo "Finished cloning into /home/container/ from git." || echo "Failed cloning into /home/container/ from git."
-		fi
+	echo ""
+	echo "✅ Git auto-update completed successfully!"
+	echo "Working directory: $(pwd)"
+
+	# Final verification
+	if is_git_repo; then
+		local final_branch=$(git branch --show-current 2>/dev/null || echo "unknown")
+		echo "Current branch: $final_branch"
 	fi
 
 	# Post git stuff
