@@ -109,6 +109,15 @@ perform_git_update() {
 	# Check if we have a shallow clone
 	local is_shallow=$(git rev-parse --is-shallow-repository 2>/dev/null || echo "false")
 
+	# Switch branches if necessary
+	local current_branch=$(git branch --show-current 2>/dev/null || echo "")
+
+	# Check if we need to switch branches
+	if [ "$current_branch" != "$branch" ]; then
+		echo "Adding remote branch reference for '$branch'..."
+		git remote set-branches --add origin "$branch"
+	fi
+
 	# Fetch based on whether it's shallow or not
 	if [ "$is_shallow" = "true" ]; then
 		echo "Detected shallow repository, fetching with depth 1..."
@@ -119,9 +128,6 @@ perform_git_update() {
 	fi
 
 	echo "Updating local files to match remote branch..."
-
-	# Switch branches if necessary
-	local current_branch=$(git branch --show-current 2>/dev/null || echo "")
 
 	if [ "$current_branch" != "$branch" ]; then
 		echo "Switching from branch '$current_branch' to '$branch'..."
@@ -137,6 +143,7 @@ perform_git_update() {
 	fi
 
 	# Deploy changes
+	echo "Updating local files to match remote branch..."
 	git reset --hard "origin/$branch"
 
 	# Get latest commit info for logging
