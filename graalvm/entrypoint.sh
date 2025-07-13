@@ -119,6 +119,24 @@ perform_git_update() {
 	fi
 
 	echo "Updating local files to match remote branch..."
+
+	# Switch branches if necessary
+	local current_branch=$(git branch --show-current 2>/dev/null || echo "")
+
+	if [ "$current_branch" != "$branch" ]; then
+		echo "Switching from branch '$current_branch' to '$branch'..."
+
+		# Check if local branch exists
+		if git show-ref --verify --quiet "refs/heads/$branch"; then
+			echo "Local branch '$branch' exists, checking out..."
+			git checkout "$branch"
+		else
+			echo "Creating and checking out new local branch '$branch'..."
+			git checkout -b "$branch" "origin/$branch"
+		fi
+	fi
+
+	# Deploy changes
 	git reset --hard "origin/$branch"
 
 	# Get latest commit info for logging
