@@ -41,10 +41,10 @@ if [ "${GIT_ENABLED}" == "true" ] || [ "${GIT_ENABLED}" == "1" ]; then
     echo -e "Git directory is empty. Attempting to clone git repository."
     if [ -z ${GIT_BRANCH} ]; then
       echo -e "Cloning default branch into /home/container/."
-      git clone ${GIT_REPOURL} . --force
+      git clone --force ${GIT_REPOURL} .
     else
       echo -e "Cloning ${GIT_BRANCH} branch into /home/container/."
-      git clone --single-branch --branch ${GIT_BRANCH} ${GIT_REPOURL} . --force && echo "Finished cloning into /home/container/ from git." || echo "Failed cloning into /home/container/ from git."
+      git clone --single-branch --branch --force ${GIT_BRANCH} ${GIT_REPOURL} .  && echo "Finished cloning into /home/container/ from git." || echo "Failed cloning into /home/container/ from git."
     fi
   fi
 
