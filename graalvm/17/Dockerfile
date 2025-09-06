@@ -3,9 +3,9 @@ FROM ubuntu:24.04
 ARG TARGETPLATFORM
 ARG JAVA_VERSION=17
 
-LABEL author="darksaid98" maintainer="kontakt@riko.dev"
+LABEL author="hakkodev" maintainer="kontakt@riko.dev"
 
-LABEL org.opencontainers.image.source="https://github.com/darksaid98/yolks"
+LABEL org.opencontainers.image.source="https://github.com/hakkodev/yolks"
 LABEL org.opencontainers.image.licenses=MIT
 
 ENV DEBIAN_FRONTEND=noninteractive

@@ -36,4 +36,4 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/darksaid98/yolks:wine_${{ matrix.tag }}
+            ghcr.io/hakkodev/yolks:wine_${{ matrix.tag }}

@@ -1,4 +1,4 @@
-FROM        --platform=$TARGETOS/$TARGETARCH ghcr.io/darksaid98/yolks:debian
+FROM        --platform=$TARGETOS/$TARGETARCH ghcr.io/hakkodev/yolks:debian
 
 LABEL       author="Torsten Widmann" maintainer="support@goover.de"
 

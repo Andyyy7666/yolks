@@ -39,4 +39,4 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/darksaid98/yolks:elixir_${{ matrix.tag }}
+            ghcr.io/hakkodev/yolks:elixir_${{ matrix.tag }}

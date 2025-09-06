@@ -41,4 +41,4 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/darksaid98/yolks:postgres_${{ matrix.tag }}
+            ghcr.io/hakkodev/yolks:postgres_${{ matrix.tag }}

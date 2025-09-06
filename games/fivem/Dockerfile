@@ -2,7 +2,7 @@ FROM         --platform=$TARGETOS/$TARGETARCH debian:bookworm-slim
 
 LABEL        author="Michael Parker" maintainer="parker@pterodactyl.io"
 
-LABEL        org.opencontainers.image.source="https://github.com/darksaid98/yolks"
+LABEL        org.opencontainers.image.source="https://github.com/hakkodev/yolks"
 LABEL        org.opencontainers.image.licenses=MIT
 
 ENV          DEBIAN_FRONTEND noninteractive

@@ -1,4 +1,4 @@
-FROM        ghcr.io/darksaid98/yolks:debian
+FROM        ghcr.io/hakkodev/yolks:debian
 
 LABEL       author="Manuel Dielacher" maintainer="th3dilli@gmx.at"
 

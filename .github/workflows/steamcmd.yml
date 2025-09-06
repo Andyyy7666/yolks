@@ -37,4 +37,4 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/darksaid98/steamcmd:${{ matrix.distro }}
+            ghcr.io/hakkodev/steamcmd:${{ matrix.distro }}

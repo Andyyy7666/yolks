@@ -41,7 +41,7 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/darksaid98/games:${{ matrix.game }}
+            ghcr.io/hakkodev/games:${{ matrix.game }}
   pushAll:
     name: "games_All:${{ matrix.game }}"
     runs-on: ubuntu-latest
@@ -73,4 +73,4 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/darksaid98/games:${{ matrix.game }}
+            ghcr.io/hakkodev/games:${{ matrix.game }}

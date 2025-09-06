@@ -40,4 +40,4 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/darksaid98/apps:${{ matrix.app }}
+            ghcr.io/hakkodev/apps:${{ matrix.app }}

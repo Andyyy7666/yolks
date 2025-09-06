@@ -2,7 +2,7 @@ FROM        --platform=$BUILDPLATFORM debian:bullseye-slim
 
 LABEL       author="David Wolfe (Red-Thirten)" maintainer="rehlmgaming@gmail.com"
 
-LABEL       org.opencontainers.image.source="https://github.com/darksaid98/yolks"
+LABEL       org.opencontainers.image.source="https://github.com/hakkodev/yolks"
 LABEL       org.opencontainers.image.licenses=MIT
 
 ## Update base packages and install dependencies

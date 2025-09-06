@@ -35,4 +35,4 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: |
-            ghcr.io/darksaid98/yolks:${{ matrix.tag }}
+            ghcr.io/hakkodev/yolks:${{ matrix.tag }}
