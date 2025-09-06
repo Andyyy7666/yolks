@@ -21,8 +21,8 @@ if [ "${GIT_ENABLED}" == "true" ] || [ "${GIT_ENABLED}" == "1" ]; then
     GIT_REPOURL="https://${GIT_USERNAME}:${GIT_TOKEN}@$(echo -e ${GIT_REPOURL} | cut -d/ -f3-)"
   fi
 
-  if [ "$(ls -A /home/container/resources)" ]; then # Files exist in resources folder, pull
-    echo "Files exist in /home/container/resources. Attempting to pull from git repository."
+  if [ "$(ls -A /home/container/.git)" ]; then # Files exist in resources folder, pull
+    echo "Files exist in /home/container/.git. Attempting to pull from git repository."
 
 		# Get git origin from /home/container/.git/config
     if [ -d .git ]; then
