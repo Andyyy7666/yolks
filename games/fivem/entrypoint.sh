@@ -38,13 +38,13 @@ if [ "${GIT_ENABLED}" == "true" ] || [ "${GIT_ENABLED}" == "1" ]; then
 	  echo -e "git repository in /home/container/ does not match user provided configuration. Failed pulling /home/container/ from git."
     fi
   else # No files exist in resources folder, clone
-    echo -e "Resources directory is empty. Attempting to clone git repository."
+    echo -e "Git directory is empty. Attempting to clone git repository."
     if [ -z ${GIT_BRANCH} ]; then
       echo -e "Cloning default branch into /home/container/."
-      git clone ${GIT_REPOURL} .
+      git clone ${GIT_REPOURL} . --force
     else
       echo -e "Cloning ${GIT_BRANCH} branch into /home/container/."
-      git clone --single-branch --branch ${GIT_BRANCH} ${GIT_REPOURL} . && echo "Finished cloning into /home/container/ from git." || echo "Failed cloning into /home/container/ from git."
+      git clone --single-branch --branch ${GIT_BRANCH} ${GIT_REPOURL} . --force && echo "Finished cloning into /home/container/ from git." || echo "Failed cloning into /home/container/ from git."
     fi
   fi
 
