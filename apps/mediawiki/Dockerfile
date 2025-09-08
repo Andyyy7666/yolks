@@ -1,7 +1,7 @@
 FROM         --platform=$TARGETOS/$TARGETARCH php:8.1-fpm
 
-LABEL        org.opencontainers.image.source="https://github.com/hakkodev/yolks"
-LABEL        author="hakkodev" maintainer="hakkodev89@gmail.com"
+LABEL        org.opencontainers.image.source="https://github.com/Andyyy7666/yolks"
+LABEL        author="Andyyy7666" maintainer="Andyyy766689@gmail.com"
 
 ENV     DEBIAN_FRONTEND noninteractive
 

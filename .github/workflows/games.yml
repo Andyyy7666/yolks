@@ -35,4 +35,4 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/hakkodev/games:${{ matrix.game }}
+            ghcr.io/andyyy7666/games:${{ matrix.game }}

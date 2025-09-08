@@ -34,4 +34,4 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/hakkodev/yolks:mono_${{ matrix.tag }}
+            ghcr.io/andyyy7666/yolks:mono_${{ matrix.tag }}

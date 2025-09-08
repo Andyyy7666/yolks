@@ -37,4 +37,4 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/hakkodev/installers:${{ matrix.tag }}
+            ghcr.io/andyyy7666/installers:${{ matrix.tag }}
