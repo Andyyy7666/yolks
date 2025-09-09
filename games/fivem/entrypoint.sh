@@ -33,6 +33,7 @@ if [ "${GIT_ENABLED}" == "true" ] || [ "${GIT_ENABLED}" == "1" ]; then
 
     # If git origin matches the repo specified by user then pull
     if [ "${GIT_ORIGIN}" == "${GIT_REPOURL}" ]; then #
+      git reset --hard HEAD
       git pull --force && echo "Finished pulling /home/container/ from git." || echo "Failed pulling /home/container/ from git."
 	else
 	  echo -e "git repository in /home/container/ does not match user provided configuration. Failed pulling /home/container/ from git."
